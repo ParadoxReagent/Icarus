@@ -1,6 +1,7 @@
 """
 Red Team AI Agent for Project Icarus
 AI-controlled penetration testing agent supporting multiple AI providers
+Phase 3: Includes AI memory and learning capabilities
 """
 
 import logging
@@ -14,15 +15,24 @@ logger = logging.getLogger(__name__)
 
 
 class RedTeamAgent:
-    """AI-controlled penetration testing agent"""
+    """
+    AI-controlled penetration testing agent with learning capabilities
 
-    def __init__(self, provider: str = None, model: str = None):
+    Phase 3 Features:
+    - Learns from past games via memory system
+    - Adapts strategies based on success patterns
+    - Avoids previously failed approaches
+    """
+
+    def __init__(self, provider: str = None, model: str = None, memory_manager=None, scenario: str = None):
         """
-        Initialize Red Team agent with multi-provider support
+        Initialize Red Team agent with multi-provider support and memory
 
         Args:
             provider: AI provider (anthropic, litellm, openrouter). Auto-detected if None.
             model: Model identifier. Uses RED_TEAM_MODEL env var if None.
+            memory_manager: MemoryManager instance for cross-game learning (Phase 3)
+            scenario: Current scenario ID for relevant memory retrieval
         """
         # Use environment variables if not provided
         if model is None:
@@ -43,10 +53,22 @@ class RedTeamAgent:
             logger.error(f"Failed to initialize Red Team AI client: {e}")
             raise
 
+        # Session memory (current game)
         self.memory = []
         self.current_phase = "reconnaissance"
         self.access_level = "external"
         self.discovered_info = {}
+
+        # Phase 3: Cross-game learning
+        self.memory_manager = memory_manager
+        self.scenario = scenario
+        self.learning_enabled = memory_manager is not None
+
+        if self.learning_enabled:
+            logger.info("Red Team: Learning mode ENABLED - will use past game knowledge")
+            self._load_relevant_memories()
+        else:
+            logger.info("Red Team: Learning mode disabled (no memory manager provided)")
 
     def observe_environment(self) -> Dict:
         """
@@ -145,6 +167,9 @@ class RedTeamAgent:
         """
         history_text = self._format_history(history[-5:]) if history else "No previous attempts yet."
 
+        # Phase 3: Include memory context from past games
+        memory_context = self._get_memory_context(observation['phase'])
+
         return f"""You are an AI penetration tester with access to a Kali Linux system.
 Your goal is to gain root access to the target system and exfiltrate sensitive data.
 
@@ -160,6 +185,8 @@ DISCOVERED INFORMATION:
 
 RECENT HISTORY (last 5 attempts):
 {history_text}
+
+{memory_context}
 
 MISSION OBJECTIVES (in order):
 1. Reconnaissance: Identify services and vulnerabilities (scan ports, identify versions)
@@ -263,3 +290,100 @@ Ensure the command is a valid bash command.
             if '/tcp' in line or '/udp' in line:
                 services.append(line.strip())
         return services if services else ["(nmap scan completed)"]
+
+    # ============================================================================
+    # Phase 3: Memory and Learning Methods
+    # ============================================================================
+
+    def _load_relevant_memories(self):
+        """Load relevant memories from past games (Phase 3)"""
+        if not self.learning_enabled:
+            return
+
+        try:
+            # Get learning summary
+            summary = self.memory_manager.get_learning_summary(
+                team='red',
+                scenario=self.scenario
+            )
+
+            logger.info(f"Red Team loaded {summary['total_memories']} memories from past games")
+            logger.info(f"  Successful: {summary['successful_count']}, Failed: {summary['failed_count']}")
+
+            # Log high-value learnings
+            if summary['high_value_learnings']:
+                logger.info("Red Team high-value learnings:")
+                for learning in summary['high_value_learnings'][:3]:
+                    logger.info(f"  [{learning['type']}] {learning['content'][:80]}...")
+
+        except Exception as e:
+            logger.error(f"Failed to load memories: {e}")
+
+    def _get_memory_context(self, phase: str) -> str:
+        """
+        Get relevant memory context for current phase (Phase 3)
+
+        Args:
+            phase: Current game phase
+
+        Returns:
+            Formatted string with relevant learnings
+        """
+        if not self.learning_enabled:
+            return ""
+
+        try:
+            return self.memory_manager.format_memories_for_prompt(
+                team='red',
+                phase=phase,
+                scenario=self.scenario or 'unknown',
+                limit=5
+            )
+        except Exception as e:
+            logger.error(f"Error retrieving memory context: {e}")
+            return ""
+
+    def store_learning(self, game_id: str, command: str, result: Dict, success: bool):
+        """
+        Store learning from this execution for future games (Phase 3)
+
+        Args:
+            game_id: Current game ID
+            command: Command that was executed
+            result: Execution result
+            success: Whether command succeeded
+        """
+        if not self.learning_enabled:
+            return
+
+        try:
+            # Analyze if this is worth remembering
+            pattern = self.memory_manager.analyze_pattern(
+                team='red',
+                command=command,
+                result=result,
+                success=success,
+                phase=self.current_phase
+            )
+
+            if pattern:
+                # Store the memory
+                memory_id = self.memory_manager.store_memory(
+                    game_id=game_id,
+                    team='red',
+                    memory_type=pattern['type'],
+                    content=pattern['content'],
+                    successful=success,
+                    context={
+                        'command': command,
+                        'phase': self.current_phase,
+                        'access_level': self.access_level,
+                        'scenario': self.scenario
+                    },
+                    relevance_score=pattern['relevance']
+                )
+
+                logger.debug(f"Stored {pattern['type']} memory: {memory_id}")
+
+        except Exception as e:
+            logger.error(f"Failed to store learning: {e}")

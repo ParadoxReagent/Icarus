@@ -1,6 +1,7 @@
 """
 Blue Team AI Agent for Project Icarus
 AI-controlled defensive security operations agent supporting multiple AI providers
+Phase 3: Includes AI memory and learning capabilities
 """
 
 import logging
@@ -14,15 +15,24 @@ logger = logging.getLogger(__name__)
 
 
 class BlueTeamAgent:
-    """AI-controlled defensive security operations agent"""
+    """
+    AI-controlled defensive security operations agent with learning capabilities
 
-    def __init__(self, provider: str = None, model: str = None):
+    Phase 3 Features:
+    - Learns from past games via memory system
+    - Adapts defense strategies based on patterns
+    - Improves detection based on historical attacks
+    """
+
+    def __init__(self, provider: str = None, model: str = None, memory_manager=None, scenario: str = None):
         """
-        Initialize Blue Team agent with multi-provider support
+        Initialize Blue Team agent with multi-provider support and memory
 
         Args:
             provider: AI provider (anthropic, litellm, openrouter). Auto-detected if None.
             model: Model identifier. Uses BLUE_TEAM_MODEL env var if None.
+            memory_manager: MemoryManager instance for cross-game learning (Phase 3)
+            scenario: Current scenario ID for relevant memory retrieval
         """
         # Use environment variables if not provided
         if model is None:
@@ -43,10 +53,22 @@ class BlueTeamAgent:
             logger.error(f"Failed to initialize Blue Team AI client: {e}")
             raise
 
+        # Session memory (current game)
         self.memory = []
         self.alerts = []
         self.blocked_ips = []
         self.baseline_metrics = {}
+
+        # Phase 3: Cross-game learning
+        self.memory_manager = memory_manager
+        self.scenario = scenario
+        self.learning_enabled = memory_manager is not None
+
+        if self.learning_enabled:
+            logger.info("Blue Team: Learning mode ENABLED - will use past game knowledge")
+            self._load_relevant_memories()
+        else:
+            logger.info("Blue Team: Learning mode disabled (no memory manager provided)")
 
     def monitor_system(self, execute_command_func) -> Dict:
         """
@@ -161,6 +183,9 @@ class BlueTeamAgent:
         """
         history_text = self._format_history(history[-5:]) if history else "No previous defensive actions."
 
+        # Phase 3: Include memory context from past games
+        memory_context = self._get_memory_context()
+
         return f"""You are an AI SOC analyst defending a Linux system from cyber attacks.
 
 CURRENT TELEMETRY:
@@ -174,6 +199,8 @@ BLOCKED IPs:
 
 RECENT DEFENSIVE ACTIONS:
 {history_text}
+
+{memory_context}
 
 YOUR RESPONSIBILITIES:
 1. Monitor system for suspicious activity
@@ -302,3 +329,98 @@ DO NOT include any text outside the JSON structure.
         # Track successful blocks
         if 'iptables' in command and success and '-j DROP' in command:
             logger.info("Successfully blocked an IP address")
+
+    # ============================================================================
+    # Phase 3: Memory and Learning Methods
+    # ============================================================================
+
+    def _load_relevant_memories(self):
+        """Load relevant memories from past games (Phase 3)"""
+        if not self.learning_enabled:
+            return
+
+        try:
+            # Get learning summary
+            summary = self.memory_manager.get_learning_summary(
+                team='blue',
+                scenario=self.scenario
+            )
+
+            logger.info(f"Blue Team loaded {summary['total_memories']} memories from past games")
+            logger.info(f"  Successful: {summary['successful_count']}, Failed: {summary['failed_count']}")
+
+            # Log high-value learnings
+            if summary['high_value_learnings']:
+                logger.info("Blue Team high-value learnings:")
+                for learning in summary['high_value_learnings'][:3]:
+                    logger.info(f"  [{learning['type']}] {learning['content'][:80]}...")
+
+        except Exception as e:
+            logger.error(f"Failed to load memories: {e}")
+
+    def _get_memory_context(self) -> str:
+        """
+        Get relevant memory context for current situation (Phase 3)
+
+        Returns:
+            Formatted string with relevant learnings
+        """
+        if not self.learning_enabled:
+            return ""
+
+        try:
+            return self.memory_manager.format_memories_for_prompt(
+                team='blue',
+                phase='defense',  # Blue team doesn't have phases like red team
+                scenario=self.scenario or 'unknown',
+                limit=5
+            )
+        except Exception as e:
+            logger.error(f"Error retrieving memory context: {e}")
+            return ""
+
+    def store_learning(self, game_id: str, command: str, result: Dict, success: bool):
+        """
+        Store learning from this execution for future games (Phase 3)
+
+        Args:
+            game_id: Current game ID
+            command: Command that was executed
+            result: Execution result
+            success: Whether command succeeded
+        """
+        if not self.learning_enabled:
+            return
+
+        try:
+            # Analyze if this is worth remembering
+            pattern = self.memory_manager.analyze_pattern(
+                team='blue',
+                command=command,
+                result=result,
+                success=success,
+                phase='defense'
+            )
+
+            if pattern:
+                # Store the memory
+                memory_id = self.memory_manager.store_memory(
+                    game_id=game_id,
+                    team='blue',
+                    memory_type=pattern['type'],
+                    content=pattern['content'],
+                    successful=success,
+                    context={
+                        'command': command,
+                        'phase': 'defense',
+                        'scenario': self.scenario,
+                        'blocked_ips': len(self.blocked_ips),
+                        'alerts': len(self.alerts)
+                    },
+                    relevance_score=pattern['relevance']
+                )
+
+                logger.debug(f"Stored {pattern['type']} memory: {memory_id}")
+
+        except Exception as e:
+            logger.error(f"Failed to store learning: {e}")

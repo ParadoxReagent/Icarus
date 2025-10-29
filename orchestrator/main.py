@@ -14,6 +14,7 @@ from src.red_team_agent import RedTeamAgent
 from src.blue_team_agent import BlueTeamAgent
 from src.orchestrator import GameOrchestrator
 from src.scenario_manager import ScenarioManager
+from src.memory_manager import MemoryManager  # Phase 3
 
 # Load environment variables
 load_dotenv()
@@ -99,17 +100,26 @@ def main():
     time.sleep(10)
 
     try:
+        # Initialize AI memory manager (Phase 3)
+        logger.info("Initializing AI memory manager (Phase 3)...")
+        memory_manager = MemoryManager(database=db)
+        logger.info("Memory manager initialized - AI learning enabled")
+
         # Initialize AI agents (providers are auto-detected from environment)
         logger.info("Initializing AI agents...")
         red_agent = RedTeamAgent(
             provider=red_team_provider if red_team_provider else None,
-            model=red_team_model
+            model=red_team_model,
+            memory_manager=memory_manager,
+            scenario=scenario_id
         )
         logger.info(f"Red Team agent initialized: {red_agent.client.provider_type}/{red_team_model}")
 
         blue_agent = BlueTeamAgent(
             provider=blue_team_provider if blue_team_provider else None,
-            model=blue_team_model
+            model=blue_team_model,
+            memory_manager=memory_manager,
+            scenario=scenario_id
         )
         logger.info(f"Blue Team agent initialized: {blue_agent.client.provider_type}/{blue_team_model}")
 
