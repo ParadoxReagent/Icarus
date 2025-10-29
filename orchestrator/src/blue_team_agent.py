@@ -109,8 +109,18 @@ class BlueTeamAgent:
                 temperature=0.7
             )
 
+            # Strip markdown code blocks if present (some models wrap JSON in ```json ... ```)
+            cleaned_response = response_text.strip()
+            if cleaned_response.startswith('```json'):
+                cleaned_response = cleaned_response[7:]  # Remove ```json
+            if cleaned_response.startswith('```'):
+                cleaned_response = cleaned_response[3:]  # Remove ```
+            if cleaned_response.endswith('```'):
+                cleaned_response = cleaned_response[:-3]  # Remove trailing ```
+            cleaned_response = cleaned_response.strip()
+
             # Parse JSON response
-            decision = json.loads(response_text)
+            decision = json.loads(cleaned_response)
 
             # Update internal state
             self._update_state(decision)
@@ -231,11 +241,13 @@ DO NOT include any text outside the JSON structure.
         for i, entry in enumerate(history, 1):
             action = entry.get('blue_action', 'none')
             success = entry.get('blue_success', False)
-            reasoning = entry.get('blue_reasoning', 'unknown')
+            reasoning = entry.get('blue_reasoning') or 'unknown'
+            # Handle None values safely
+            reasoning_text = reasoning[:150] if reasoning and len(reasoning) > 150 else reasoning
             formatted.append(
                 f"{i}. Action: {action}\n"
                 f"   Success: {success}\n"
-                f"   Reasoning: {reasoning[:150]}..."
+                f"   Reasoning: {reasoning_text}..."
             )
         return "\n\n".join(formatted)
 

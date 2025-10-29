@@ -31,10 +31,16 @@ services:
         condition: service_started
     environment:
       - DATABASE_URL=${DATABASE_URL}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # AI Provider API Keys
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      # AI Provider Configuration
+      - RED_TEAM_PROVIDER=${RED_TEAM_PROVIDER:-}
       - RED_TEAM_MODEL=${RED_TEAM_MODEL:-claude-sonnet-4-5-20250929}
+      - BLUE_TEAM_PROVIDER=${BLUE_TEAM_PROVIDER:-}
       - BLUE_TEAM_MODEL=${BLUE_TEAM_MODEL:-claude-sonnet-4-5-20250929}
+      # Game Configuration
       - SCENARIO_ID=${SCENARIO_ID:-dvwa_basic_pentest}
       - MAX_ROUNDS=${MAX_ROUNDS:-30}
       - COMMAND_TIMEOUT=${COMMAND_TIMEOUT:-30}
@@ -48,7 +54,6 @@ services:
       - ctf-network
     restart: unless-stopped
     profiles:
-      - default
       - scenario1
       - scenario2
       - scenario3
@@ -67,6 +72,10 @@ services:
     stdin_open: true
     tty: true
     restart: unless-stopped
+    profiles:
+      - scenario1
+      - scenario2
+      - scenario3
 
   # Blue team - Target system with DVWA (Scenario 1)
   blue-target:
@@ -75,7 +84,6 @@ services:
     hostname: target
     profiles:
       - scenario1
-      - default
     networks:
       ctf-network:
         ipv4_address: ${BLUE_TEAM_IP:-172.20.0.10}

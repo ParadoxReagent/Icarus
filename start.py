@@ -103,7 +103,7 @@ def print_scenario_details(scenario):
 
 
 def check_env_file():
-    """Check if .env file exists and has API key"""
+    """Check if .env file exists and has at least one AI provider API key configured"""
     env_file = Path(__file__).parent / ".env"
 
     if not env_file.exists():
@@ -118,17 +118,48 @@ def check_env_file():
             print(f"{Colors.RED}Error: .env.example not found!{Colors.END}")
             return False
 
-    # Check for API key
+    # Check for any AI provider API key
     with open(env_file, 'r') as f:
         content = f.read()
-        if 'sk-ant-your-key-here' in content or 'ANTHROPIC_API_KEY=' not in content:
-            print(f"\n{Colors.RED}⚠️  ANTHROPIC_API_KEY not configured!{Colors.END}")
-            print(f"{Colors.YELLOW}Please edit .env and add your Anthropic API key:{Colors.END}")
-            print(f"  {Colors.CYAN}ANTHROPIC_API_KEY=sk-ant-your-actual-key{Colors.END}\n")
+
+        # Check for configured API keys (not placeholder values)
+        has_anthropic = 'ANTHROPIC_API_KEY=' in content and 'sk-ant-your-key-here' not in content
+        has_openrouter = 'OPENROUTER_API_KEY=' in content and 'sk-or-your-key-here' not in content
+        has_openai = 'OPENAI_API_KEY=' in content and 'sk-your-openai-key-here' not in content
+
+        # Look for any API key that starts with common prefixes
+        has_any_key = any([
+            has_anthropic,
+            has_openrouter,
+            has_openai,
+            'ANTHROPIC_API_KEY=sk-ant-' in content,
+            'OPENROUTER_API_KEY=sk-or-' in content,
+            'OPENAI_API_KEY=sk-' in content,
+        ])
+
+        if not has_any_key:
+            print(f"\n{Colors.YELLOW}⚠️  No AI provider API key configured!{Colors.END}")
+            print(f"{Colors.BOLD}Supported providers:{Colors.END}")
+            print(f"  {Colors.CYAN}• Anthropic (ANTHROPIC_API_KEY=sk-ant-...){Colors.END}")
+            print(f"  {Colors.CYAN}• OpenRouter (OPENROUTER_API_KEY=sk-or-...){Colors.END}")
+            print(f"  {Colors.CYAN}• OpenAI (OPENAI_API_KEY=sk-...){Colors.END}")
+            print(f"\n{Colors.YELLOW}Please edit .env and add at least one API key{Colors.END}\n")
 
             choice = input(f"Continue anyway? (y/n): ").strip().lower()
             if choice != 'y':
                 return False
+        else:
+            # Show which providers are configured
+            providers = []
+            if has_anthropic or 'ANTHROPIC_API_KEY=sk-ant-' in content:
+                providers.append('Anthropic')
+            if has_openrouter or 'OPENROUTER_API_KEY=sk-or-' in content:
+                providers.append('OpenRouter')
+            if has_openai or 'OPENAI_API_KEY=sk-' in content:
+                providers.append('OpenAI')
+
+            if providers:
+                print(f"{Colors.GREEN}✓ Configured AI providers: {', '.join(providers)}{Colors.END}")
 
     return True
 
@@ -136,11 +167,11 @@ def check_env_file():
 def get_profile_for_scenario(scenario_id):
     """Get docker-compose profile for scenario"""
     profile_map = {
-        'dvwa_basic_pentest': 'default',
+        'dvwa_basic_pentest': 'scenario1',
         'network_services_exploit': 'scenario2',
         'api_security_test': 'scenario3'
     }
-    return profile_map.get(scenario_id, 'default')
+    return profile_map.get(scenario_id, 'scenario1')
 
 
 def build_containers(scenario_id, profile):
@@ -148,9 +179,9 @@ def build_containers(scenario_id, profile):
     print(f"\n{Colors.CYAN}{'─' * 70}{Colors.END}")
     print(f"{Colors.BOLD}🔨 Building Docker containers...{Colors.END}\n")
 
+    # Build all containers (docker-compose build doesn't support --profile)
+    # The profile will be used later when starting containers
     cmd = ["docker-compose", "build"]
-    if profile != 'default':
-        cmd.extend(["--profile", profile])
 
     try:
         subprocess.run(cmd, check=True, cwd=Path(__file__).parent)
@@ -170,10 +201,7 @@ def start_game(scenario_id, profile):
     env = os.environ.copy()
     env['SCENARIO_ID'] = scenario_id
 
-    cmd = ["docker-compose"]
-    if profile != 'default':
-        cmd.extend(["--profile", profile])
-    cmd.append("up")
+    cmd = ["docker-compose", "--profile", profile, "up"]
 
     print(f"{Colors.CYAN}Running: {' '.join(cmd)}{Colors.END}")
     print(f"{Colors.CYAN}Scenario: {scenario_id}{Colors.END}\n")

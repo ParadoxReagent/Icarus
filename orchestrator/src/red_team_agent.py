@@ -95,8 +95,18 @@ class RedTeamAgent:
                 temperature=0.7
             )
 
+            # Strip markdown code blocks if present (some models wrap JSON in ```json ... ```)
+            cleaned_response = response_text.strip()
+            if cleaned_response.startswith('```json'):
+                cleaned_response = cleaned_response[7:]  # Remove ```json
+            if cleaned_response.startswith('```'):
+                cleaned_response = cleaned_response[3:]  # Remove ```
+            if cleaned_response.endswith('```'):
+                cleaned_response = cleaned_response[:-3]  # Remove trailing ```
+            cleaned_response = cleaned_response.strip()
+
             # Parse JSON response
-            decision = json.loads(response_text)
+            decision = json.loads(cleaned_response)
 
             # Update internal state
             self._update_state(decision)

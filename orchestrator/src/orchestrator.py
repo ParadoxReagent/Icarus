@@ -44,6 +44,7 @@ class GameOrchestrator:
         self.scoring = ScoringSystem()
 
         self.current_game_id = None
+        self.current_round_id = None
         self.round_number = 0
 
     def start_game(self, scenario: str, max_rounds: int = 30) -> str:
@@ -118,6 +119,18 @@ class GameOrchestrator:
             # Update agent phases
             self.red_agent.current_phase = current_phase
 
+            # Create round in database first to get round_id for command logging
+            round_id = self.db.log_round(
+                game_id=self.current_game_id,
+                round_num=self.round_number,
+                phase=current_phase,
+                red_data={},  # Will be updated after execution
+                blue_data={}  # Will be updated after execution
+            )
+
+            # Store round_id for command logging
+            self.current_round_id = round_id
+
             # Execute red team turn
             print("[RED TEAM TURN]")
             red_result = self.execute_red_team_turn()
@@ -128,15 +141,6 @@ class GameOrchestrator:
             # Execute blue team turn
             print("\n[BLUE TEAM TURN]")
             blue_result = self.execute_blue_team_turn()
-
-            # Log round to database
-            round_id = self.db.log_round(
-                game_id=self.current_game_id,
-                round_num=self.round_number,
-                phase=current_phase,
-                red_data=red_result,
-                blue_data=blue_result
-            )
 
             # Evaluate events and update scores
             events = self.scoring.evaluate_round(round_id, red_result, blue_result)
@@ -232,7 +236,7 @@ class GameOrchestrator:
         # Log to database
         self.db.log_command(
             game_id=self.current_game_id,
-            round_id=str(self.round_number),
+            round_id=self.current_round_id,
             team='red',
             container='red-kali',
             command=decision.get('command', ''),
@@ -295,7 +299,7 @@ class GameOrchestrator:
             # Log to database
             self.db.log_command(
                 game_id=self.current_game_id,
-                round_id=str(self.round_number),
+                round_id=self.current_round_id,
                 team='blue',
                 container='blue-target',
                 command=defense.get('defensive_action', ''),
@@ -326,11 +330,11 @@ class GameOrchestrator:
         try:
             container_obj = self.docker_client.containers.get(container)
 
-            # Execute with timeout
+            # Execute command (docker-py v7.0.0 doesn't support timeout parameter in exec_run)
+            # Timeout is handled at the Docker daemon level via command_timeout in the game config
             exit_code, output = container_obj.exec_run(
                 cmd=['bash', '-c', command],
-                demux=True,
-                timeout=self.command_timeout
+                demux=True
             )
 
             stdout = output[0].decode('utf-8', errors='replace') if output[0] else ""
