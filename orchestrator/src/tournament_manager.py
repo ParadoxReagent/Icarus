@@ -1,4 +1,4 @@
-ç"""
+"""
 Tournament Manager for Project Icarus
 Phase 3: Run multi-game tournaments with AI learning
 """
