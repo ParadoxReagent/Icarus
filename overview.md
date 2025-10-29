@@ -1,3 +1,4 @@
+# Project Icarus
 # AI Red Team vs Blue Team Cyber Range
 
 ## Project Overview
