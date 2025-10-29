@@ -1,0 +1,161 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database
+  database:
+    image: postgres:15
+    container_name: game-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cyberrange}
+      POSTGRES_USER: ${POSTGRES_USER:-gamemaster}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_here}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+    networks:
+      - admin-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gamemaster}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Game orchestrator
+  orchestrator:
+    build: ./orchestrator
+    container_name: orchestrator
+    depends_on:
+      database:
+        condition: service_healthy
+      red-kali:
+        condition: service_started
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - RED_TEAM_MODEL=${RED_TEAM_MODEL:-claude-sonnet-4-5-20250929}
+      - BLUE_TEAM_MODEL=${BLUE_TEAM_MODEL:-claude-sonnet-4-5-20250929}
+      - SCENARIO_ID=${SCENARIO_ID:-dvwa_basic_pentest}
+      - MAX_ROUNDS=${MAX_ROUNDS:-30}
+      - COMMAND_TIMEOUT=${COMMAND_TIMEOUT:-30}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./logs:/app/logs
+      - ./scenarios:/app/scenarios:ro
+    networks:
+      - admin-network
+      - ctf-network
+    restart: unless-stopped
+    profiles:
+      - default
+      - scenario1
+      - scenario2
+      - scenario3
+
+  # Red team - Kali Linux
+  red-kali:
+    build: ./containers/red-kali
+    container_name: red-kali
+    hostname: attacker
+    networks:
+      ctf-network:
+        ipv4_address: ${RED_TEAM_IP:-172.20.0.5}
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+  # Blue team - Target system with DVWA (Scenario 1)
+  blue-target:
+    build: ./containers/blue-target
+    container_name: blue-target
+    hostname: target
+    profiles:
+      - scenario1
+      - default
+    networks:
+      ctf-network:
+        ipv4_address: ${BLUE_TEAM_IP:-172.20.0.10}
+    volumes:
+      - ./logs/blue:/var/log/game:rw
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+  # Scenario 2: Network Services Target
+  network-services:
+    build: ./containers/network-services
+    container_name: network-services
+    hostname: network-target
+    profiles:
+      - scenario2
+    networks:
+      ctf-network:
+        ipv4_address: ${BLUE_TEAM_IP:-172.20.0.10}
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+  # Scenario 3: API Security Target
+  api-target:
+    build: ./containers/api-target
+    container_name: api-target
+    hostname: api-server
+    profiles:
+      - scenario3
+    networks:
+      ctf-network:
+        ipv4_address: ${BLUE_TEAM_IP:-172.20.0.10}
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+  # Dashboard Backend (Flask API + WebSocket)
+  dashboard-backend:
+    build: ./dashboard/backend
+    container_name: dashboard-backend
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+    networks:
+      - admin-network
+    ports:
+      - "5001:5001"
+    restart: unless-stopped
+
+  # Dashboard Frontend (React)
+  dashboard-frontend:
+    build: ./dashboard/frontend
+    container_name: dashboard-frontend
+    depends_on:
+      - dashboard-backend
+    environment:
+      - REACT_APP_API_URL=http://localhost:5001
+    networks:
+      - admin-network
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+networks:
+  # Isolated attack/defense network
+  ctf-network:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: ${CTF_NETWORK_SUBNET:-172.20.0.0/24}
+
+  # Admin network for orchestration
+  admin-network:
+    driver: bridge
+
+volumes:
+  postgres-data:

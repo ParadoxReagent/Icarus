@@ -1,0 +1,99 @@
+{
+  "scenarios": [
+    {
+      "id": "dvwa_basic_pentest",
+      "name": "DVWA Basic Web Application Pentest",
+      "description": "Target a vulnerable web application with SQL injection, weak SSH credentials, and privilege escalation opportunities",
+      "difficulty": "beginner",
+      "target_container": "blue-target",
+      "vulnerabilities": [
+        "SQL injection in login form",
+        "Weak SSH credentials (admin/password123)",
+        "Directory traversal",
+        "Unpatched Apache"
+      ],
+      "objectives": {
+        "red_team": [
+          "Identify web application and services",
+          "Exploit SQL injection",
+          "Gain SSH access",
+          "Escalate to root",
+          "Exfiltrate /root/flag.txt"
+        ],
+        "blue_team": [
+          "Monitor failed login attempts",
+          "Detect SQL injection patterns",
+          "Block brute force attacks",
+          "Patch vulnerabilities",
+          "Maintain service availability"
+        ]
+      },
+      "flag_location": "/root/flag.txt",
+      "estimated_rounds": 30
+    },
+    {
+      "id": "network_services_exploit",
+      "name": "Network Services Exploitation",
+      "description": "Target multiple network services including FTP, SSH, SMB, and Telnet with various vulnerabilities",
+      "difficulty": "intermediate",
+      "target_container": "network-services",
+      "vulnerabilities": [
+        "Anonymous FTP access",
+        "SMB EternalBlue (CVE-2017-0144)",
+        "Weak SSH passwords",
+        "Unencrypted Telnet",
+        "Misconfigured NFS shares"
+      ],
+      "objectives": {
+        "red_team": [
+          "Enumerate all network services",
+          "Exploit anonymous FTP or SMB vulnerability",
+          "Establish persistence via cron job",
+          "Lateral movement between services",
+          "Exfiltrate sensitive data"
+        ],
+        "blue_team": [
+          "Detect port scanning activity",
+          "Block exploitation attempts",
+          "Remove backdoors and persistence",
+          "Harden service configurations",
+          "Monitor for lateral movement"
+        ]
+      },
+      "flag_location": "/opt/secrets/flag.txt",
+      "estimated_rounds": 35
+    },
+    {
+      "id": "api_security_test",
+      "name": "API Security Testing",
+      "description": "Target a REST API with JWT authentication, NoSQL injection, and broken access control",
+      "difficulty": "advanced",
+      "target_container": "api-target",
+      "vulnerabilities": [
+        "JWT secret key exposure",
+        "NoSQL injection in MongoDB",
+        "Broken authentication",
+        "IDOR (Insecure Direct Object Reference)",
+        "Rate limiting bypass"
+      ],
+      "objectives": {
+        "red_team": [
+          "Enumerate API endpoints",
+          "Manipulate JWT tokens",
+          "Exploit NoSQL injection",
+          "Access other users' data via IDOR",
+          "Escalate to admin privileges"
+        ],
+        "blue_team": [
+          "Implement API rate limiting",
+          "Validate input and tokens",
+          "Monitor for injection patterns",
+          "Revoke compromised tokens",
+          "Maintain audit logs"
+        ]
+      },
+      "flag_location": "/app/data/admin_flag.json",
+      "estimated_rounds": 30
+    }
+  ]
+}
