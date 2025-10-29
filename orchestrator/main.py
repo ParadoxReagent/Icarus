@@ -41,12 +41,15 @@ def main():
 
     # Get configuration from environment
     database_url = os.getenv('DATABASE_URL')
-    anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
-    red_team_model = os.getenv('RED_TEAM_MODEL', 'claude-sonnet-4-5-20250929')
-    blue_team_model = os.getenv('BLUE_TEAM_MODEL', 'claude-sonnet-4-5-20250929')
     scenario_id = os.getenv('SCENARIO_ID', 'dvwa_basic_pentest')
     max_rounds = int(os.getenv('MAX_ROUNDS', '30'))
     command_timeout = int(os.getenv('COMMAND_TIMEOUT', '30'))
+
+    # AI provider configuration (read by agents from environment)
+    red_team_provider = os.getenv('RED_TEAM_PROVIDER', '')
+    red_team_model = os.getenv('RED_TEAM_MODEL', 'claude-sonnet-4-5-20250929')
+    blue_team_provider = os.getenv('BLUE_TEAM_PROVIDER', '')
+    blue_team_model = os.getenv('BLUE_TEAM_MODEL', 'claude-sonnet-4-5-20250929')
 
     # Load scenarios
     scenario_manager = ScenarioManager()
@@ -68,12 +71,10 @@ def main():
         logger.error("DATABASE_URL environment variable not set")
         sys.exit(1)
 
-    if not anthropic_api_key:
-        logger.error("ANTHROPIC_API_KEY environment variable not set")
-        sys.exit(1)
-
     logger.info(f"Configuration:")
+    logger.info(f"  Red Team Provider: {red_team_provider or 'auto-detect'}")
     logger.info(f"  Red Team Model: {red_team_model}")
+    logger.info(f"  Blue Team Provider: {blue_team_provider or 'auto-detect'}")
     logger.info(f"  Blue Team Model: {blue_team_model}")
     logger.info(f"  Max Rounds: {max_rounds}")
     logger.info(f"  Command Timeout: {command_timeout}s")
@@ -98,19 +99,19 @@ def main():
     time.sleep(10)
 
     try:
-        # Initialize AI agents
+        # Initialize AI agents (providers are auto-detected from environment)
         logger.info("Initializing AI agents...")
         red_agent = RedTeamAgent(
-            api_key=anthropic_api_key,
+            provider=red_team_provider if red_team_provider else None,
             model=red_team_model
         )
-        logger.info("Red Team agent initialized")
+        logger.info(f"Red Team agent initialized: {red_agent.client.provider_type}/{red_team_model}")
 
         blue_agent = BlueTeamAgent(
-            api_key=anthropic_api_key,
+            provider=blue_team_provider if blue_team_provider else None,
             model=blue_team_model
         )
-        logger.info("Blue Team agent initialized")
+        logger.info(f"Blue Team agent initialized: {blue_agent.client.provider_type}/{blue_team_model}")
 
         # Initialize orchestrator
         orchestrator = GameOrchestrator(

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL database
   database:
@@ -8,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-cyberrange}
       POSTGRES_USER: ${POSTGRES_USER:-gamemaster}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_here}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-super_secrect-decodering428}
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
@@ -16,7 +14,7 @@ services:
     networks:
       - admin-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gamemaster}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gamemaster} -d ${POSTGRES_DB:-cyberrange}"]
       interval: 10s
       timeout: 5s
       retries: 5

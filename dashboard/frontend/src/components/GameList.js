@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
@@ -9,13 +9,7 @@ function GameList({ onSelectGame }) {
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all'); // all, running, completed
 
-  useEffect(() => {
-    fetchGames();
-    const interval = setInterval(fetchGames, 5000); // Refresh every 5 seconds
-    return () => clearInterval(interval);
-  }, [filter]);
-
-  const fetchGames = async () => {
+  const fetchGames = useCallback(async () => {
     try {
       const params = filter !== 'all' ? { status: filter } : {};
       const response = await axios.get(`${API_URL}/api/games`, { params });
@@ -25,7 +19,13 @@ function GameList({ onSelectGame }) {
       setError(err.message);
       setLoading(false);
     }
-  };
+  }, [filter]);
+
+  useEffect(() => {
+    fetchGames();
+    const interval = setInterval(fetchGames, 5000); // Refresh every 5 seconds
+    return () => clearInterval(interval);
+  }, [fetchGames]);
 
   if (loading) {
     return <div className="loading">Loading games...</div>;

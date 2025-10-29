@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
@@ -10,6 +10,34 @@ function GameDetail({ gameId, onBack, socket }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('rounds'); // rounds, events
+
+  const fetchGameData = useCallback(async () => {
+    try {
+      const [gameRes, roundsRes, eventsRes] = await Promise.all([
+        axios.get(`${API_URL}/api/games/${gameId}`),
+        axios.get(`${API_URL}/api/games/${gameId}/rounds`),
+        axios.get(`${API_URL}/api/games/${gameId}/events`)
+      ]);
+
+      setGame(gameRes.data);
+      setRounds(roundsRes.data.rounds);
+      setEvents(eventsRes.data.events);
+      setLoading(false);
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+    }
+  }, [gameId]);
+
+  const handleGameUpdate = useCallback((data) => {
+    console.log('Game update:', data);
+    fetchGameData();
+  }, [fetchGameData]);
+
+  const handleRoundComplete = useCallback((data) => {
+    console.log('Round complete:', data);
+    fetchGameData();
+  }, [fetchGameData]);
 
   useEffect(() => {
     fetchGameData();
@@ -27,35 +55,7 @@ function GameDetail({ gameId, onBack, socket }) {
         socket.off('round_complete');
       };
     }
-  }, [gameId, socket]);
-
-  const fetchGameData = async () => {
-    try {
-      const [gameRes, roundsRes, eventsRes] = await Promise.all([
-        axios.get(`${API_URL}/api/games/${gameId}`),
-        axios.get(`${API_URL}/api/games/${gameId}/rounds`),
-        axios.get(`${API_URL}/api/games/${gameId}/events`)
-      ]);
-
-      setGame(gameRes.data);
-      setRounds(roundsRes.data.rounds);
-      setEvents(eventsRes.data.events);
-      setLoading(false);
-    } catch (err) {
-      setError(err.message);
-      setLoading(false);
-    }
-  };
-
-  const handleGameUpdate = (data) => {
-    console.log('Game update:', data);
-    fetchGameData();
-  };
-
-  const handleRoundComplete = (data) => {
-    console.log('Round complete:', data);
-    fetchGameData();
-  };
+  }, [gameId, socket, fetchGameData, handleGameUpdate, handleRoundComplete]);
 
   if (loading) {
     return <div className="loading">Loading game details...</div>;

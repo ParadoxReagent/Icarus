@@ -1,0 +1,4 @@
+#!/bin/bash
+# Project Icarus Launcher Wrapper
+
+python3 start.py "$@"

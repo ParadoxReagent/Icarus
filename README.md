@@ -38,8 +38,12 @@ The AIs learn through **in-context learning** (reading history of what worked/fa
 - ✅ **REST API** for game data access
 - ✅ **Statistics & Leaderboards**
 - ✅ **Dynamic Scenario Loading** from configuration files
+- ✅ **Multi-Provider AI Support** - Use Claude, GPT-4, Gemini, or 100+ models
+- ✅ **Flexible Model Configuration** - Different models for red/blue teams
 
 **📊 [View Phase 2 Documentation](PHASE2.md)** for complete feature guide!
+
+**🤖 [AI Provider Configuration Guide](AI_PROVIDERS.md)** - Use multiple AI models and providers!
 
 ---
 
@@ -78,14 +82,50 @@ The AIs learn through **in-context learning** (reading history of what worked/fa
 
 - **Docker** 24.0+ and **Docker Compose** 2.20+
 - **Python** 3.11+ (for local development)
-- **Anthropic API Key** (for Claude AI)
+- **AI API Key** - At least one of:
+  - Anthropic API Key (for Claude models)
+  - OpenAI API Key (for GPT models via LiteLLM)
+  - OpenRouter API Key (for multiple providers)
+  - Or other providers via LiteLLM (see [AI Providers Guide](AI_PROVIDERS.md))
 - **8GB RAM minimum** (16GB recommended)
 - **4 CPU cores minimum** (8 cores recommended)
 - **50GB disk space**
 
 ---
 
-## Quick Start
+## Super Quick Start 🚀 (Recommended)
+
+**New! Interactive launcher with scenario selection:**
+
+```bash
+# Clone and enter directory
+git clone https://github.com/yourusername/icarus.git
+cd icarus
+
+# Add your API key to .env
+cp .env.example .env
+nano .env  # Add your ANTHROPIC_API_KEY
+
+# Run the interactive launcher
+./icarus
+# or
+python3 start.py
+```
+
+The launcher will:
+1. 📋 Show you all available scenarios with descriptions
+2. 🎯 Let you select which one to run
+3. 🔨 Build the necessary containers
+4. 🚀 Start the game automatically
+5. 🌐 Open the dashboard in your browser!
+
+**📖 [Full Launcher Guide](LAUNCHER_GUIDE.md)** - Complete walkthrough with screenshots and examples
+
+---
+
+## Manual Start (Advanced)
+
+If you prefer manual control:
 
 ### 1. Clone the Repository
 
@@ -106,6 +146,7 @@ Required environment variables:
 ```bash
 ANTHROPIC_API_KEY=sk-ant-your-key-here
 POSTGRES_PASSWORD=secure_password_here
+SCENARIO_ID=dvwa_basic_pentest  # or network_services_exploit or api_security_test
 ```
 
 ### 3. Build and Start
@@ -116,6 +157,10 @@ docker-compose build
 
 # Start the game
 docker-compose up
+
+# Or for specific scenarios:
+docker-compose --profile scenario2 up  # Network Services
+docker-compose --profile scenario3 up  # API Security
 ```
 
 The orchestrator will automatically start a game session when all containers are ready.
@@ -232,14 +277,27 @@ icarus/
 
 ### Environment Variables
 
-See `.env.example` for all available options:
+See `.env.example` for all available options.
 
-- `ANTHROPIC_API_KEY`: Your Claude API key (required)
+**AI Provider Configuration:**
+- `RED_TEAM_PROVIDER`: AI provider for red team (anthropic, litellm, openrouter, or empty for auto-detect)
 - `RED_TEAM_MODEL`: AI model for red team (default: claude-sonnet-4-5-20250929)
+- `BLUE_TEAM_PROVIDER`: AI provider for blue team (same options as red team)
 - `BLUE_TEAM_MODEL`: AI model for blue team (default: claude-sonnet-4-5-20250929)
+
+**API Keys** (configure at least one):
+- `ANTHROPIC_API_KEY`: Anthropic Claude API key
+- `OPENROUTER_API_KEY`: OpenRouter API key (access to 100+ models)
+- `OPENAI_API_KEY`: OpenAI API key (for GPT models via LiteLLM)
+- See [AI_PROVIDERS.md](AI_PROVIDERS.md) for additional provider keys
+
+**Game Configuration:**
+- `SCENARIO_ID`: Scenario to run (dvwa_basic_pentest, network_services_exploit, api_security_test)
 - `MAX_ROUNDS`: Maximum game rounds (default: 30)
 - `COMMAND_TIMEOUT`: Command timeout in seconds (default: 30)
 - `LOG_LEVEL`: Logging level (default: INFO)
+
+**📖 Full Configuration Guide:** See [AI_PROVIDERS.md](AI_PROVIDERS.md) for detailed provider setup
 
 ### Database
 

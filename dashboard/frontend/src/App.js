@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { io } from 'socket.io-client';
 import GameList from './components/GameList';
 import GameDetail from './components/GameDetail';

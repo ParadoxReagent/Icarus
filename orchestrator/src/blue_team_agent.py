@@ -1,13 +1,14 @@
 """
 Blue Team AI Agent for Project Icarus
-AI-controlled defensive security operations agent using Claude API
+AI-controlled defensive security operations agent supporting multiple AI providers
 """
 
 import logging
 import json
+import os
 from typing import Dict, List, Optional
 from datetime import datetime
-from anthropic import Anthropic
+from .ai_provider import AIClient
 
 logger = logging.getLogger(__name__)
 
@@ -15,17 +16,33 @@ logger = logging.getLogger(__name__)
 class BlueTeamAgent:
     """AI-controlled defensive security operations agent"""
 
-    def __init__(self, api_key: str, model: str = "claude-sonnet-4-5-20250929"):
+    def __init__(self, provider: str = None, model: str = None):
         """
-        Initialize Blue Team agent
+        Initialize Blue Team agent with multi-provider support
 
         Args:
-            api_key: Anthropic API key
-            model: Claude model to use
+            provider: AI provider (anthropic, litellm, openrouter). Auto-detected if None.
+            model: Model identifier. Uses BLUE_TEAM_MODEL env var if None.
         """
-        self.api_key = api_key
+        # Use environment variables if not provided
+        if model is None:
+            model = os.getenv('BLUE_TEAM_MODEL', 'claude-sonnet-4-5-20250929')
+
+        if provider is None:
+            provider = os.getenv('BLUE_TEAM_PROVIDER', '').strip()
+            provider = provider if provider else None  # Auto-detect if empty
+
         self.model = model
-        self.client = Anthropic(api_key=api_key)
+        self.provider = provider or 'auto-detected'
+
+        # Initialize AI client with provider abstraction
+        try:
+            self.client = AIClient(provider_type=provider, model=model)
+            logger.info(f"Blue Team initialized: provider={self.client.provider_type}, model={model}")
+        except Exception as e:
+            logger.error(f"Failed to initialize Blue Team AI client: {e}")
+            raise
+
         self.memory = []
         self.alerts = []
         self.blocked_ips = []
@@ -83,17 +100,14 @@ class BlueTeamAgent:
         prompt = self._build_defense_prompt(telemetry, history)
 
         try:
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=2000,
-                temperature=0.7,
+            # Use unified AI client interface
+            response_text = self.client.create_message(
                 messages=[
                     {"role": "user", "content": prompt}
-                ]
+                ],
+                max_tokens=2000,
+                temperature=0.7
             )
-
-            # Extract text content
-            response_text = response.content[0].text
 
             # Parse JSON response
             decision = json.loads(response_text)

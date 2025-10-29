@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';
@@ -8,11 +8,64 @@ function LiveMonitor({ socket }) {
   const [selectedGame, setSelectedGame] = useState(null);
   const [liveData, setLiveData] = useState(null);
 
+  const fetchRunningGames = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/games?status=running`);
+      setRunningGames(response.data.games);
+
+      // Auto-select first running game if none selected
+      if (!selectedGame && response.data.games.length > 0) {
+        setSelectedGame(response.data.games[0].game_id);
+      }
+    } catch (err) {
+      console.error('Error fetching running games:', err);
+    }
+  }, [selectedGame]);
+
+  const fetchGameData = useCallback(async (gameId) => {
+    try {
+      const [gameRes, roundsRes] = await Promise.all([
+        axios.get(`${API_URL}/api/games/${gameId}`),
+        axios.get(`${API_URL}/api/games/${gameId}/rounds`)
+      ]);
+
+      setLiveData({
+        game: gameRes.data,
+        rounds: roundsRes.data.rounds
+      });
+    } catch (err) {
+      console.error('Error fetching game data:', err);
+    }
+  }, []);
+
+  const handleLiveUpdate = useCallback((data) => {
+    console.log('Live update:', data);
+    if (selectedGame) {
+      fetchGameData(selectedGame);
+    }
+  }, [selectedGame, fetchGameData]);
+
+  const handleRoundComplete = useCallback((data) => {
+    console.log('Round complete:', data);
+    if (selectedGame) {
+      fetchGameData(selectedGame);
+    }
+  }, [selectedGame, fetchGameData]);
+
+  const handleGameOver = useCallback((data) => {
+    console.log('Game over:', data);
+    if (selectedGame) {
+      fetchGameData(selectedGame);
+    }
+    // Refresh running games list
+    fetchRunningGames();
+  }, [selectedGame, fetchGameData, fetchRunningGames]);
+
   useEffect(() => {
     fetchRunningGames();
     const interval = setInterval(fetchRunningGames, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchRunningGames]);
 
   useEffect(() => {
     if (selectedGame && socket) {
@@ -32,60 +85,7 @@ function LiveMonitor({ socket }) {
         socket.off('game_over');
       };
     }
-  }, [selectedGame, socket]);
-
-  const fetchRunningGames = async () => {
-    try {
-      const response = await axios.get(`${API_URL}/api/games?status=running`);
-      setRunningGames(response.data.games);
-
-      // Auto-select first running game if none selected
-      if (!selectedGame && response.data.games.length > 0) {
-        setSelectedGame(response.data.games[0].game_id);
-      }
-    } catch (err) {
-      console.error('Error fetching running games:', err);
-    }
-  };
-
-  const fetchGameData = async (gameId) => {
-    try {
-      const [gameRes, roundsRes] = await Promise.all([
-        axios.get(`${API_URL}/api/games/${gameId}`),
-        axios.get(`${API_URL}/api/games/${gameId}/rounds`)
-      ]);
-
-      setLiveData({
-        game: gameRes.data,
-        rounds: roundsRes.data.rounds
-      });
-    } catch (err) {
-      console.error('Error fetching game data:', err);
-    }
-  };
-
-  const handleLiveUpdate = (data) => {
-    console.log('Live update:', data);
-    if (selectedGame) {
-      fetchGameData(selectedGame);
-    }
-  };
-
-  const handleRoundComplete = (data) => {
-    console.log('Round complete:', data);
-    if (selectedGame) {
-      fetchGameData(selectedGame);
-    }
-  };
-
-  const handleGameOver = (data) => {
-    console.log('Game over:', data);
-    if (selectedGame) {
-      fetchGameData(selectedGame);
-    }
-    // Refresh running games list
-    fetchRunningGames();
-  };
+  }, [selectedGame, socket, handleLiveUpdate, handleRoundComplete, handleGameOver, fetchGameData]);
 
   if (runningGames.length === 0) {
     return (

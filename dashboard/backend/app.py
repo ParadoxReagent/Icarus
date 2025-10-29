@@ -20,7 +20,7 @@ CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 # Database connection
-DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://gamemaster:secure_password_here@database:5432/cyberrange')
+DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://gamemaster:super_secrect-decodering428@database:5432/cyberrange')
 
 
 def get_db_connection():
