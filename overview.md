@@ -28,14 +28,14 @@ An automated cyber security training environment where AI models (using Claude o
 └──────┬────────────────────────────────┬─────────────────────┘
        │                                │
        │  ┌─────────────────────────────▼──────┐
-       │  │     PostgreSQL Database             │
-       │  │  • Game state                       │
-       │  │  • Round history                    │
-       │  │  • Command logs                     │
-       │  │  • Telemetry                        │
-       │  │  • Scoring                          │
-       │  │  • AI memory/context                │
-       │  └─────────────────────────────────────┘
+       │  │     PostgreSQL Database            │
+       │  │  • Game state                      │
+       │  │  • Round history                   │
+       │  │  • Command logs                    │
+       │  │  • Telemetry                       │
+       │  │  • Scoring                         │
+       │  │  • AI memory/context               │
+       │  └────────────────────────────────────┘
        │
   ┌────┴─────────────────────────────────┐
   │                                      │
@@ -49,7 +49,7 @@ An automated cyber security training environment where AI models (using Claude o
        │    CTF Network             │
        │    (isolated)              │
        │                            │
-  ┌────▼─────┐              ┌──────▼──────┐
+  ┌────▼─────┐              ┌───────▼─────┐
   │   Red    │              │    Blue     │
   │   Team   │──── Attack ─▶│   Team      │
   │  (Kali)  │    Traffic   │  (Target)   │
@@ -1662,7 +1662,3 @@ grep -r "suspicious" /var/log/
 **Last Updated**: [Date]
 **Document Version**: 1.0.0
 **Status**: Ready for Development
-
----
-
-This specification provides a complete blueprint for building an AI-controlled cyber range system. Pass this document to development teams, AI coding assistants like Claude Code, or use it as a reference for implementation.
