@@ -205,3 +205,76 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Project Icarus Specific
+# Environment and secrets
+.env
+.env.local
+.env.production
+.env.*.local
+*.key
+*.pem
+secrets/
+
+# Docker volumes and data
+postgres-data/
+redis-data/
+docker-volumes/
+
+# Game logs and outputs
+logs/
+*.log
+orchestrator/logs/
+blue-logs/
+red-tools/
+
+# Database dumps and backups
+*.sql.gz
+*.dump
+backups/
+
+# AI model outputs
+ai_memory/
+model_cache/
+
+# Temporary game state
+game_state/
+*.state
+
+# IDE and Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Testing and coverage
+htmlcov/
+.coverage
+.coverage.*
+.pytest_cache/
+test-results/
+
+# Documentation builds
+docs/_build/
+docs/.doctrees/
+site/
